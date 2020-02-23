@@ -64,7 +64,6 @@ class DataProcessor:
                     print(val)
                     print(list_values)
 
-        # print(res)
         return res.tolist()
 
     def get_cqt_data(self, freq):
@@ -82,6 +81,6 @@ class DataProcessor:
                 .agg(DataProcessor.one_hot)
             grouped_annotation['FixedMidiPitch'] = grouped_annotation['MidiPitch'].apply(
                 lambda x: [0.0] * 128 if x is None else x)
-            y.extend(grouped_annotation)
-        return X,y
+            y.extend(grouped_annotation['FixedMidiPitch'])
+        return X, y
 
