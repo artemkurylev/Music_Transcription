@@ -23,6 +23,8 @@ class DataProcessor:
         self.path = path
         self.chroma_cqts = []
         self.cqts = []
+        self.annotations = None
+        self.audios = None
         try:
             self.txt_files = [file for file in os.listdir(path) if file.endswith('.txt')]
             self.audio_files = [file for file in os.listdir(path) if file.endswith('.wav')]
@@ -31,9 +33,15 @@ class DataProcessor:
         except FileNotFoundError:
             print('Please enter correct Path - some of your files not found')
             return
-        self.annotations = [pd.read_csv(os.path.join(self.path, filename),sep='\t') for filename in self.txt_files]
-        self.audios = [librosa.load(os.path.join(self.path, filename)) for filename in self.audio_files]
-        # self.annotations = [pd.read_csv(filename) for filename in txt_files]
+
+    def load_annotations(self):
+        self.annotations = [pd.read_csv(os.path.join(self.path, filename), sep='\t') for filename in self.txt_files]
+
+    def load_audios(self, sr=None):
+        if sr is not None:
+            self.audios = [librosa.load(os.path.join(self.path, filename), sr) for filename in self.audio_files]
+        else:
+            self.audios = [librosa.load(os.path.join(self.path, filename)) for filename in self.audio_files]
 
     def generate_chroma_cqt_images(self, output_path):
         for i in range(len(self.audios)):
@@ -46,9 +54,12 @@ class DataProcessor:
             plt.colorbar()
             plt.savefig(os.path.join(output_path, self.txt_files[i][:3] + 'png'), bbox_inches='tight')
 
-    def generate_cqts(self):
+    def generate_cqts(self, hop_length=512, fmin=None, n_bins=84, bins_per_octave=12,
+                      tuning=0.0, filter_scale=1, norm=1, sparsity=0.01, window='hann', scale=True, pad_mode='reflect'):
+
         for i in range(len(self.audios)):
-            chroma_cqt = np.abs(librosa.cqt(self.audios[i][0], self.audios[i][1]))
+            chroma_cqt = np.abs(librosa.cqt(self.audios[i][0], self.audios[i][1],  hop_length, fmin, n_bins,
+                                bins_per_octave, tuning, filter_scale, norm, sparsity, window, scale, pad_mode))
             self.cqts.append(chroma_cqt)
 
     @staticmethod
@@ -76,7 +87,10 @@ class DataProcessor:
 
         for i in range(len(shapes)):
             new_freq = shapes[i]
-            self.annotations[i]['frame'] = pd.cut(self.annotations[i].OnsetTime, new_freq)
+            try:
+                self.annotations[i]['frame'] = pd.cut(self.annotations[i].OnsetTime, new_freq)
+            except IndexError:
+                print('Index out of range: ', i, ' > ', len(self.annotations))
             grouped_annotation = self.annotations[i][['MidiPitch', 'frame']].groupby(by='frame', as_index=False)\
                 .agg(DataProcessor.one_hot)
             grouped_annotation['FixedMidiPitch'] = grouped_annotation['MidiPitch'].apply(
