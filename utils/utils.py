@@ -1,20 +1,10 @@
 import numpy as np
-import argparse
-from scipy import signal
-from midiutil.MidiFile import MIDIFile
 import matplotlib.pyplot as plt
-import soundfile
 import librosa
-import csv
-import time
-import h5py
-import pickle
 import os
-from sklearn import preprocessing
-from scipy.io import wavfile
 import pandas as pd
-from sklearn import metrics
 from librosa import display
+from joblib import Parallel, delayed
 
 
 def recursive_file_search(folder):
@@ -28,6 +18,22 @@ def recursive_file_search(folder):
 
 
 class DataProcessor:
+
+    class DataReader:
+
+        def __init__(self):
+            self.audios = []
+            self.annotations = []
+
+        def read_audios(self, audio_file_paths):
+            results = Parallel(n_jobs=-1, verbose=5, backend="threading")(
+                map(delayed(self.read_audio), audio_file_paths))
+            return results
+
+        def read_audio(self, path):
+            audio = librosa.load(path, sr=16000)
+            if audio:
+                self.audios.append(audio)
 
     def __init__(self, path):
         self.path = path
@@ -49,7 +55,9 @@ class DataProcessor:
 
     def load_audios(self, sr=None):
         if sr is not None:
-            self.audios = [librosa.load(filename, sr) for filename in self.audio_files]
+            dr = DataProcessor.DataReader()
+            dr.read_audios(self.audio_files)
+            self.audios = dr.audios
         else:
             self.audios = [librosa.load(filename) for filename in self.audio_files]
 
