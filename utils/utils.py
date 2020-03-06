@@ -17,6 +17,16 @@ from sklearn import metrics
 from librosa import display
 
 
+def recursive_file_search(folder):
+    files = [os.path.join(folder, file) for file in os.listdir(folder) if os.path.isfile(os.path.join(folder, file))]
+    folders = [os.path.join(folder, file) for file in os.listdir(folder) if os.path.isdir(os.path.join(folder, file))]
+    if folders:
+        for next_folder in folders:
+            files.extend(recursive_file_search(next_folder))
+
+    return files
+
+
 class DataProcessor:
 
     def __init__(self, path):
@@ -25,23 +35,23 @@ class DataProcessor:
         self.cqts = []
         self.annotations = None
         self.audios = None
+        self.files = recursive_file_search(self.path)
         try:
-            self.txt_files = [file for file in os.listdir(path) if file.endswith('.txt')]
-            self.audio_files = [file for file in os.listdir(path) if file.endswith('.wav')]
-            # self.midi_files = [file for file in os.listdir(path) if file.endswith('.midi')]
+            self.txt_files = [file for file in self.files if file.endswith('.txt')]
+            self.audio_files = [file for file in self.files if file.endswith('.wav')]
 
         except FileNotFoundError:
             print('Please enter correct Path - some of your files not found')
             return
 
     def load_annotations(self):
-        self.annotations = [pd.read_csv(os.path.join(self.path, filename), sep='\t') for filename in self.txt_files]
+        self.annotations = [pd.read_csv(filename, sep='\t') for filename in self.txt_files]
 
     def load_audios(self, sr=None):
         if sr is not None:
-            self.audios = [librosa.load(os.path.join(self.path, filename), sr) for filename in self.audio_files]
+            self.audios = [librosa.load(filename, sr) for filename in self.audio_files]
         else:
-            self.audios = [librosa.load(os.path.join(self.path, filename)) for filename in self.audio_files]
+            self.audios = [librosa.load(filename) for filename in self.audio_files]
 
     def generate_chroma_cqt_images(self, output_path):
         for i in range(len(self.audios)):
@@ -74,8 +84,12 @@ class DataProcessor:
                     print('-0000-0-0-0-')
                     print(val)
                     print(list_values)
-
         return res.tolist()
+
+    @staticmethod
+    def simple_one_hot(series):
+        list_values = np.array(series.values.tolist())
+        return list_values.argmax()
 
     def get_cqt_data(self, freq):
         X = []
@@ -94,7 +108,7 @@ class DataProcessor:
             grouped_annotation = self.annotations[i][['MidiPitch', 'frame']].groupby(by='frame', as_index=False)\
                 .agg(DataProcessor.one_hot)
             grouped_annotation['FixedMidiPitch'] = grouped_annotation['MidiPitch'].apply(
-                lambda x: [0.0] * 128 if x is None else x)
+                lambda x: [0]*128 if x is None else x)
             y.extend(grouped_annotation['FixedMidiPitch'])
         return X, y
 
