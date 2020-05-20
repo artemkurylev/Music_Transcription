@@ -22,7 +22,6 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 import torch.optim as optim
-from torchvision import datasets, transforms
 from torch. utils.data import DataLoader
 
 
@@ -66,7 +65,7 @@ if __name__ == '__main__':
 
     # Train model
     optimizer = optim.Adam(model.parameters())
-    epoch_num = 10
+    epoch_num = 50
     log_interval = 50
     loss_function = nn.CrossEntropyLoss()
     for epoch in range(epoch_num):

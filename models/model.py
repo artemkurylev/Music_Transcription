@@ -6,7 +6,7 @@ class ANN(nn.Module):
     def __init__(self, input_size, activation, output_size, dropout=None, bn=None):
         super(ANN, self).__init__()
 
-        def ann_block(in_neurons, out_neurons, activation, dropout=None, bn=None):
+        def ann_block(in_neurons, out_neurons, activation=nn.ReLU(), dropout=None, bn=None):
             block = [nn.Linear(in_neurons, out_neurons), activation]
 
             if dropout is not None:
